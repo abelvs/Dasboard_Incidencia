@@ -1,0 +1,18 @@
+# Ignorar los datos crudos
+01_datos/raw/*
+!01_datos/raw/README.md
+
+# Python
+__pycache__/
+*.pyc
+
+# Entornos virtuales
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Sistema
+.DS_Store
+Thumbs.db 
