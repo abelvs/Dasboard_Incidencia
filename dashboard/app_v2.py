@@ -37,8 +37,8 @@ def crear_mapa(subtipo, fecha_inicio, fecha_fin):
     ## Paleta dinámica de color ##
     vmin = gdf_mapa["total"].min()
     vmax = gdf_mapa["total"].max()
-    indices = [vmin, vmax*0.2, vmax*0.4, vmax*0.6, vmax*0.8, vmax]
-    colores = ["#000000", "#330000", "#660000", "#990000", "#cc0000", "#ff0000"]
+    indices = [vmin, vmax*0.1, vmax*0.3, vmax*0.55, vmax*0.8, vmax]
+    colores = ["#000000", "#683737", "#6D0505", "#990000", "#cc0000", "#ff0000"]
     
     colormap = cm.LinearColormap(
         colors=colores,
@@ -53,7 +53,7 @@ def crear_mapa(subtipo, fecha_inicio, fecha_fin):
     centro = [gdf_mapa.geometry.centroid.y.mean(), gdf_mapa.geometry.centroid.x.mean()]
     m = folium.Map(
         location=centro, 
-        zoom_start=5.4, 
+        zoom_start=5.48, 
         tiles="https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_nolabels/{z}/{x}/{y}.png",
         attr="&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors &copy; <a href=\"https://carto.com/attributions\">CARTO</a>"
     )
@@ -64,14 +64,18 @@ def crear_mapa(subtipo, fecha_inicio, fecha_fin):
             "fillColor": colormap(x['properties']['total']),
             "color": "grey50",
             "weight": 0.3,
-            # Menos opacos los medios, solo los más bajos muy opacos
             "fillOpacity": (
-                0.2 if x['properties']['total'] <= vmax*0.2 else
-                0.45 if x['properties']['total'] <= vmax*0.4 else
-                0.6 if x['properties']['total'] <= vmax*0.6 else
-                0.75 if x['properties']['total'] <= vmax*0.8 else
-                0.85
+                0.55 if x['properties']['total'] <= vmax*0.55 else
+                0.7 if x['properties']['total'] <= vmax*0.6 else
+                0.85 if x['properties']['total'] <= vmax*0.7 else
+                0.95 if x['properties']['total'] <= vmax*0.9 else
+                1.0
             ),
+        },
+        highlight_function=lambda x: {
+            "color": "#ffe066",  # amarillo claro
+            "weight": 3,
+            "fillOpacity": 0.9,
         },
         tooltip=folium.GeoJsonTooltip(
             fields=["NOMGEO","total"],
@@ -79,7 +83,7 @@ def crear_mapa(subtipo, fecha_inicio, fecha_fin):
         )
     ).add_to(m)
     
-    return m, len(df_filtrado)
+    return m, df_filtrado['total'].sum()
 
 ## Sidebar de filtros ##
 subtipos = df['subtipo_de_delito'].cat.categories.tolist()
@@ -112,6 +116,6 @@ html(
     height=800
 )
 
-st.markdown(f"Mostrando {num_registros} registros filtrados.")
+st.markdown(f"{num_registros:,} casos de {selected_subtipo} en el periodo seleccionado.")
 
 
