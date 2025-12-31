@@ -8,19 +8,78 @@ import branca.colormap as cm
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
 def cargar_datos():
     ## Cargar df de incidencia municipal procesado y el shapefile municipal ##
     df = pd.read_parquet(BASE_DIR / "01_datos/processed/Municipal-Delitos.parquet")
-    gdf = gpd.read_file(BASE_DIR /"01_datos/raw/mg_2025_integrado/conjunto_de_datos/00mun.shp")
-    gdf = gdf.to_crs(epsg=4326)
+    gdf = gpd.read_file(BASE_DIR /"01_datos/processed/00mun_simplificado.geojson")
     gdf = gdf.rename(columns={'CVEGEO':'cve_municipio'})
     return df, gdf
 
 df, gdf = cargar_datos()
 
-gdf["geometry"] = gdf.geometry.simplify(tolerance=0.005, preserve_topology=True)
-
+@st.cache_resource
+def crear_mapa(subtipo, fecha_inicio, fecha_fin):
+    ## Filtrar datos ##
+    df_filtrado = df[
+        (df["subtipo_de_delito"] == subtipo) & 
+        (df["fecha"] >= pd.to_datetime(fecha_inicio)) &
+        (df["fecha"] <= pd.to_datetime(fecha_fin)) 
+    ]
+    
+    ## Agregar totales por municipio ##
+    df_agrupado = df_filtrado.groupby('cve_municipio', observed=False)['total'].sum().reset_index()
+    
+    ## Unir a geometría municipal ##
+    gdf_mapa = gdf.merge(df_agrupado, on='cve_municipio', how='left').fillna(0)
+    
+    ## Paleta dinámica de color ##
+    vmin = gdf_mapa["total"].min()
+    vmax = gdf_mapa["total"].max()
+    indices = [vmin, vmax*0.2, vmax*0.4, vmax*0.6, vmax*0.8, vmax]
+    colores = ["#000000", "#330000", "#660000", "#990000", "#cc0000", "#ff0000"]
+    
+    colormap = cm.LinearColormap(
+        colors=colores,
+        index=indices,
+        vmin=vmin,
+        vmax=vmax
+    )
+    colormap.caption = "Total"
+    
+    ## Mapa interactivo ##
+    gdf_proj = gdf_mapa.to_crs("EPSG:3857")
+    centro = [gdf_mapa.geometry.centroid.y.mean(), gdf_mapa.geometry.centroid.x.mean()]
+    m = folium.Map(
+        location=centro, 
+        zoom_start=5.4, 
+        tiles="https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_nolabels/{z}/{x}/{y}.png",
+        attr="&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors &copy; <a href=\"https://carto.com/attributions\">CARTO</a>"
+    )
+    
+    folium.GeoJson(
+        gdf_mapa,
+        style_function=lambda x: {
+            "fillColor": colormap(x['properties']['total']),
+            "color": "grey50",
+            "weight": 0.3,
+            # Menos opacos los medios, solo los más bajos muy opacos
+            "fillOpacity": (
+                0.2 if x['properties']['total'] <= vmax*0.2 else
+                0.45 if x['properties']['total'] <= vmax*0.4 else
+                0.6 if x['properties']['total'] <= vmax*0.6 else
+                0.75 if x['properties']['total'] <= vmax*0.8 else
+                0.85
+            ),
+        },
+        tooltip=folium.GeoJsonTooltip(
+            fields=["NOMGEO","total"],
+            aliases=["Municipio:","Total delitos:"]
+        )
+    ).add_to(m)
+    
+    return m, len(df_filtrado)
 
 ## Sidebar de filtros ##
 subtipos = df['subtipo_de_delito'].cat.categories.tolist()
@@ -34,51 +93,25 @@ rango_fechas = st.sidebar.date_input(
     [pd.to_datetime("2024-01-01"), pd.to_datetime("2024-12-31")]
 )
 
-## Filtrar datos ##
+# --- Crear y renderizar mapa ---
+m, num_registros = crear_mapa(selected_subtipo, rango_fechas[0], rango_fechas[1])
 
-df_filtrado = df[
-    (df["subtipo_de_delito"] == selected_subtipo) & 
-    (df["fecha"] >= pd.to_datetime(rango_fechas[0])) &
-    (df["fecha"] <= pd.to_datetime(rango_fechas[1])) 
-]
-
-## Agregar totales por municipio ##
-df_agrupado = df_filtrado.groupby('cve_municipio')['total'].sum().reset_index()
-
-
-## Unir a geometría municipal ##
-gdf_mapa = gdf.merge(df_agrupado, on = 'cve_municipio', how = 'left').fillna(0)
-
-
-## Paleta dinámica de color ##
-colormap = cm.LinearColormap(
-    colors=["#ffffb2", "#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"],
-    vmin=gdf_mapa["total"].min(),
-    vmax=gdf_mapa["total"].max()
+html(
+    f"""
+    <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }}
+    </style>
+    <div style="position: fixed; top: 0; left: 0; width: 110%; height: 100vh; z-index: 1;">
+        {m._repr_html_()}
+    </div>
+    """,
+    height=800
 )
-colormap.caption = "Total delitos"
 
-## Mapa interactivo ##
-centro = [gdf_mapa.geometry.centroid.y.mean(), gdf_mapa.geometry.centroid.x.mean()]
-m = folium.Map(location=centro, zoom_start=6, tiles="cartodbdark_matter")
-
-folium.GeoJson(
-    gdf_mapa,
-    style_function=lambda x: {
-        "fillColor": colormap(x['properties']['total']),
-        "color": "black",
-        "weight": 0.3,
-        "fillOpacity": 0.6,
-    },
-    tooltip=folium.GeoJsonTooltip(
-        fields=["NOMGEO","total"],
-        aliases=["Municipio:","Total delitos:"]
-    )
-).add_to(m)
-
-# --- Renderizar en Streamlit ---
-html(m._repr_html_(), width=2500, height=2200)
-
-st.markdown(f"Mostrando {len(df_filtrado)} registros filtrados.")
+st.markdown(f"Mostrando {num_registros} registros filtrados.")
 
 

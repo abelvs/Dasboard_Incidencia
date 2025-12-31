@@ -11,7 +11,7 @@ df_final = (
     .pipe(agregar_por_subtipo)
     .pipe(pivotear_meses)
     .pipe(crear_fecha)
-    .pipe(pad_clave_inegi)
+    .pipe(pad_clave_inegi) 
     .pipe(recode_categoricas)
     .pipe(reordenar_cols)
 )
