@@ -1,0 +1,10 @@
+{
+    // ...existing settings...
+    "terminal.integrated.env.windows": {
+        "CONDA_DEFAULT_ENV": "kepler_env",
+        "CONDA_PREFIX": "C:/Users/USER/miniconda3/envs/kepler_env",
+        "CONDA_PROMPT_MODIFIER": "(kepler_env) ",
+        "PATH": "C:/Users/USER/miniconda3/envs/kepler_env;${env:PATH}"
+    },
+    "terminal.integrated.shellArgs.windows": ["-NoExit", "-Command", "conda activate kepler_env"]
+}

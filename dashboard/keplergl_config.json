@@ -1,0 +1,81 @@
+{
+  "version": "v1",
+  "config": {
+    "visState": {
+      "filters": [],
+      "layers": [
+        {
+          "id": "municipios_layer",
+          "type": "geojson",
+          "config": {
+            "dataId": "Incidencia municipal",
+            "label": "Incidencia municipal",
+            "color": [255, 0, 0],
+            "highlightColor": [252, 242, 26, 255],
+            "columns": {"geojson": "geometry"},
+            "isVisible": true,
+            "visConfig": {
+              "opacity": 0.7,
+              "thickness": 0.5,
+              "colorRange": {
+                "name": "Black to Red",
+                "type": "sequential",
+                "category": "custom",
+                "colors": ["#1a1a1a", "#330000", "#660000", "#990000", "#cc0000", "#ff0000", "#ff3333", "#ff6666"]
+              },
+              "radius": 10,
+              "sizeRange": [0, 1000],
+              "radiusRange": [0, 50],
+              "heightRange": [0, 500],
+              "elevationScale": 5,
+              "enableElevationZoomFactor": true,
+              "stroked": false,
+              "filled": true,
+              "enable3d": false
+            },
+            "textLabel": []
+          },
+          "visualChannels": {
+            "colorField": {"name": "total", "type": "real"},
+            "colorScale": "quantile"
+          }
+        }
+      ],
+      "interactionConfig": {
+        "tooltip": {
+          "fieldsToShow": {
+            "Incidencia municipal": ["cve_municipio", "total"]
+          },
+          "enabled": true
+        }
+      },
+      "layerBlending": "normal",
+      "splitMaps": [],
+      "animationConfig": {"currentTime": null, "speed": 1}
+    },
+    "mapState": {
+      "bearing": 0,
+      "dragRotate": false,
+      "latitude": 23.6345,
+      "longitude": -102.5528,
+      "pitch": 0,
+      "zoom": 4.5,
+      "isSplit": false
+    },
+    "mapStyle": {
+      "styleType": "dark",
+      "topLayerGroups": {},
+      "visibleLayerGroups": {
+        "label": true,
+        "road": true,
+        "border": false,
+        "building": false,
+        "water": true,
+        "land": true,
+        "3d building": false
+      },
+      "threeDBuildingColor": [9.665468314072013, 17.18305478057247, 31.1442867897876],
+      "mapStyles": {}
+    }
+  }
+}
